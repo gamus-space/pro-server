@@ -1,0 +1,19 @@
+{
+  "name": "proto-serve",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node src/serve.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "keygen": "cd cert && tls-keygen"
+  },
+  "author": "krzykos",
+  "license": "ISC",
+  "devDependencies": {
+    "cookie-parser": "^1.4.6",
+    "express": "^4.18.2",
+    "opn": "^6.0.0",
+    "tls-keygen": "^3.7.0"
+  }
+}
