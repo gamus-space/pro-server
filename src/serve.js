@@ -11,8 +11,11 @@ const app = express();
 app.use(express.json());
 app.use(cookieParser());
 
+const USER_PRIVATE = ['password'];
 const USERS = {
-	'beta': { username: 'beta', password: 'beta' },
+	'beta': { username: 'beta', password: 'beta', flac: true, mp3: true },
+	'basic': { username: 'basic', password: 'basic', flac: false, mp3: true },
+	'empty': { username: 'empty', password: 'empty', flac: false, mp3: false },
 };
 let origin;
 
@@ -45,6 +48,7 @@ const login = path => (req, res, next) => {
 			Buffer.from(`${req.body.username}:${req.body.password}`, 'ascii').toString('base64'),
 			cookieOptions(path)
 		);
+		res.json(Object.fromEntries(Object.entries(user).filter(([field]) => !USER_PRIVATE.includes(field))));
 		res.end();
 		return;
 	}
@@ -61,12 +65,26 @@ const auth = (req, res, next) => {
 	const auth = req.cookies.authorization;
 	const credentials = auth && Buffer.from(auth, 'base64').toString('ascii').split(':');
 	const user = USERS[credentials?.[0]];
-	const access = user && user.password === credentials?.[1];
-	if (!access) {
-		res.status(401);
+	const userAuthorized = user && user.password === credentials?.[1];
+
+	const file = `${req.baseUrl}${req.path}`;
+	let fileAuthorized;
+	if (file.endsWith('.json'))
+		fileAuthorized = true;
+	else if (file.endsWith('.flac'))
+		fileAuthorized = userAuthorized && user.flac;
+	else if (file.endsWith('.mp3')) {
+		if (!(userAuthorized && user.mp3))
+			req.headers['range'] = 'bytes=0-307199';
+		fileAuthorized = true;
+	} else
+		fileAuthorized = false;
+	if (!fileAuthorized) {
+		res.status(403);
 		res.end();
 		return;
 	}
+
 	next();
 };
 
@@ -74,7 +92,7 @@ const ok = (req, res) => {
 	res.end();
 };
 
-app.use(express.static('../proto'));
+app.use(express.static('../pro-ui'));
 app.use(cors);
 
 app.use('/media-pub/api/login', ok);

@@ -91,19 +91,29 @@ const db = tree(dir)
     const content = fs.readFileSync(path.resolve(dir, file));
     const headers = flacHeaders(content);
     const time = Math.round(headers.sampleCount / headers.sampleRate * 100) / 100;
-    const size = fs.statSync(path.resolve(dir, file)).size;
     const replayGain = {
       album: flacGainValue(headers.metadata?.['replaygain_album_gain']),
       track: flacGainValue(headers.metadata?.['replaygain_track_gain']),
     };
+    const size = fs.statSync(path.resolve(dir, file)).size;
+    const altFile = file.replace(/\.flac$/, '.mp3');
+    const altSize = fs.existsSync(path.resolve(dir, altFile)) ? fs.statSync(path.resolve(dir, altFile)).size : undefined;
     return {
-      url: file,
+      files: [
+        {
+          url: file,
+          size,
+        },
+        ...altSize ? [{
+          url: altFile,
+          size: altSize,
+        }] : [],
+      ],
       game: headers.metadata?.['ALBUM'],
       title: headers.metadata?.['TITLE'],
       tracknumber: headers.metadata?.['TRACKNUMBER'],
       tracktotal: headers.metadata?.['TRACKTOTAL'],
       time,
-      size,
       replayGain,
       platform: headers.metadata?.['Platform'],
       year: headers.metadata?.['DATE'],
