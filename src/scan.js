@@ -85,7 +85,7 @@ function flacGainValue(gainStr) {
   return str && Number(str);
 }
 
-const db = tree(dir)
+const originalDb = tree(dir)
   .filter(file => file.endsWith('.flac'))
   .map(file => {
     const content = fs.readFileSync(path.resolve(dir, file));
@@ -120,5 +120,22 @@ const db = tree(dir)
       kind: headers.metadata?.['Kind'],
       ordinal: headers.metadata?.['Ordinal'],
     };
-  }).sort((a, b) => `${a.game}\t${a.ordinal}`.localeCompare(`${b.game}\t${b.ordinal}`, undefined, { numeric: true }));
+  });
+
+const derivativeDb = tree(dir)
+  .filter(file => file.endsWith('.json') && file !== 'index.json')
+  .flatMap(file => {
+    const { derivative } = JSON.parse(fs.readFileSync(path.resolve(dir, file), 'utf-8'));
+    if (!derivative) return;
+    return derivative.tracks.flatMap(track => {
+      const criteria = { ...derivative.original, ...track.original };
+      const overrides = { ...derivative.overrides, ...track.overrides };
+      return originalDb
+        .filter(track => Object.entries(criteria).every(([key, value]) => track[key] === value))
+        .flatMap(track => ({ ...track, ...overrides }));
+    });
+  });
+
+const db = [...originalDb, ...derivativeDb]
+  .sort((a, b) => `${a.game}\t${a.ordinal}`.localeCompare(`${b.game}\t${b.ordinal}`, undefined, { numeric: true }));
 console.log(JSON.stringify(db, null, 2));
