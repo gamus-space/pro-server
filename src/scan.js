@@ -3,6 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const process = require('process');
+const { StringDecoder } = require('string_decoder');
 
 if (process.argv.length <= 2) {
   console.error('usage: scan.js directory');
@@ -36,12 +37,14 @@ function getMultiByte(data, pos, n) {
   return res;
 }
 
+const utf8Decoder = new StringDecoder('utf8');
+
 function getString(data, pos, n) {
-  return String.fromCharCode(...new Uint8Array(data.buffer.slice(pos, pos+n)));
+  return utf8Decoder.write(new DataView(data.buffer.slice(pos, pos+n)));
 }
 
 function flacHeaders(content) {
-  const data = new DataView(content.buffer.slice(0, content.length));
+  const data = new DataView(content.buffer.slice(content.byteOffset, content.byteOffset + content.byteLength));
   let pos = 0;
   const sig = data.getUint32(pos); pos += 4;
   if (sig !== 0x664c6143) throw new Error('invalid signature');
@@ -111,6 +114,7 @@ const originalDb = tree(dir)
       ],
       game: headers.metadata?.['ALBUM'],
       title: headers.metadata?.['TITLE'],
+      artist: headers.metadata?.['ARTIST'],
       tracknumber: headers.metadata?.['TRACKNUMBER'],
       tracktotal: headers.metadata?.['TRACKTOTAL'],
       time,

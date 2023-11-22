@@ -77,7 +77,11 @@ const auth = (req, res, next) => {
 		if (!(userAuthorized && user.mp3))
 			req.headers['range'] = 'bytes=0-307199';
 		fileAuthorized = true;
-	} else
+	} else if (file.match(/\/demo(-\d+)?\.webp$/)) {
+		fileAuthorized = true;
+	} else if (file.endsWith('.webp'))
+		fileAuthorized = userAuthorized;
+	else
 		fileAuthorized = false;
 	if (!fileAuthorized) {
 		res.status(403);
@@ -110,5 +114,5 @@ const server = https.createServer({
 }, app).listen(port, () => {
 	origin = `https://127.0.0.1:${server.address().port}`;
 	console.log(`Listening at ${origin} ...`);
-	if (port === 0) opn(url);
+	if (port === 0) opn(origin);
 });
