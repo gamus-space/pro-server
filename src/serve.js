@@ -40,7 +40,7 @@ const cookieOptions = path => ({
 	path,
 });
 
-const login = path => (req, res, next) => {
+const login = path => (req, res) => {
 	const user = USERS[req.body.username]
 	if (user && user.password === req.body.password) {
 		res.cookie(
@@ -48,7 +48,7 @@ const login = path => (req, res, next) => {
 			Buffer.from(`${req.body.username}:${req.body.password}`, 'ascii').toString('base64'),
 			cookieOptions(path)
 		);
-		res.json(Object.fromEntries(Object.entries(user).filter(([field]) => !USER_PRIVATE.includes(field))));
+		res.json(serializeUser(user));
 		res.end();
 		return;
 	}
@@ -56,31 +56,49 @@ const login = path => (req, res, next) => {
 	res.end();
 };
 
-const logout = path => (req, res, next) => {
+const logout = path => (req, res) => {
 	res.clearCookie('authorization', cookieOptions(path));
 	res.end();
 };
 
-const auth = (req, res, next) => {
+const user = (req, res) => {
+	const user = userAuthorized(req);
+	if (user)
+		res.json(serializeUser(user));
+	else
+		res.status(401);
+	res.end();
+};
+
+function serializeUser(user) {
+	return Object.fromEntries(Object.entries(user).filter(([field]) => !USER_PRIVATE.includes(field)));
+}
+
+function userAuthorized(req) {
 	const auth = req.cookies.authorization;
 	const credentials = auth && Buffer.from(auth, 'base64').toString('ascii').split(':');
 	const user = USERS[credentials?.[0]];
 	const userAuthorized = user && user.password === credentials?.[1];
+	return userAuthorized ? user : undefined;
+}
+
+const auth = (req, res, next) => {
+	const user = userAuthorized(req);
 
 	const file = `${req.baseUrl}${req.path}`;
 	let fileAuthorized;
 	if (file.endsWith('.json'))
 		fileAuthorized = true;
 	else if (file.endsWith('.flac'))
-		fileAuthorized = userAuthorized && user.flac;
+		fileAuthorized = user?.flac;
 	else if (file.endsWith('.mp3')) {
-		if (!(userAuthorized && user.mp3))
+		if (!user?.mp3)
 			req.headers['range'] = 'bytes=0-307199';
 		fileAuthorized = true;
 	} else if (file.match(/\/demo(-\d+)?\.webp$/)) {
 		fileAuthorized = true;
 	} else if (file.endsWith('.webp'))
-		fileAuthorized = userAuthorized;
+		fileAuthorized = !!user;
 	else
 		fileAuthorized = false;
 	if (!fileAuthorized) {
@@ -101,10 +119,12 @@ app.use(cors);
 
 app.use('/media-pub/api/login', ok);
 app.use('/media-pub/api/logout', ok);
+app.use('/media-pub/api/user', user);
 app.use('/media-pub', express.static('media'));
 
 app.use('/media-priv/api/login', login('/media-priv/'));
 app.use('/media-priv/api/logout', logout('/media-priv/'));
+app.use('/media-priv/api/user', user);
 app.use('/media-priv', auth, express.static('media'));
 
 const port = parseInt(process.argv[2], 10) || 0;
