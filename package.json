@@ -4,13 +4,19 @@
   "description": "",
   "scripts": {
     "start": "node src/serve.js",
-    "keygen": "cd cert && tls-keygen"
+    "keygen": "cd cert && tls-keygen",
+    "scan": "npm-run-all scan-music scan-games scan-screenshots scan-text",
+    "scan-music": "node src/scan-music.js media/music",
+    "scan-screenshots": "node src/scan-screenshots.js media/screenshots",
+    "scan-games": "node src/scan-games.js media",
+    "scan-text": "node src/scan-text.js media/text"
   },
   "author": "krzykos",
   "license": "ISC",
   "devDependencies": {
     "cookie-parser": "^1.4.6",
     "express": "^4.18.2",
+    "npm-run-all": "^4.1.5",
     "opn": "^6.0.0",
     "tls-keygen": "^3.7.0"
   }

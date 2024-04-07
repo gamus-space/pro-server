@@ -4,6 +4,7 @@ const express = require('express');
 const cookieParser = require('cookie-parser');
 const https = require('https');
 const opn = require('opn');
+const path = require('path');
 const fs = require('fs');
 const process = require('process');
 
@@ -87,20 +88,23 @@ const auth = (req, res, next) => {
 
 	const file = `${req.baseUrl}${req.path}`;
 	let fileAuthorized;
-	if (file.endsWith('.json'))
+	if (file.endsWith('.json')) {
 		fileAuthorized = true;
-	else if (file.endsWith('.flac'))
+	} else if (file.endsWith('.flac')) {
 		fileAuthorized = user?.flac;
-	else if (file.endsWith('.mp3')) {
+	} else if (file.endsWith('.mp3')) {
 		if (!user?.mp3)
 			req.headers['range'] = 'bytes=0-307199';
 		fileAuthorized = true;
 	} else if (file.match(/\/demo(-\d+)?\.webp$/)) {
 		fileAuthorized = true;
-	} else if (file.endsWith('.webp'))
+	} else if (file.endsWith('.webp')) {
 		fileAuthorized = !!user;
-	else
+	} else if (file.endsWith('.md')) {
+		fileAuthorized = true;
+	} else {
 		fileAuthorized = false;
+	}
 	if (!fileAuthorized) {
 		res.status(403);
 		res.end();
@@ -114,7 +118,9 @@ const ok = (req, res) => {
 	res.end();
 };
 
-app.use(express.static('../pro-ui'));
+const UI_PATH = '../pro-ui';
+
+app.use(express.static(UI_PATH));
 app.use(cors);
 
 app.use('/media-pub/api/login', ok);
@@ -126,6 +132,11 @@ app.use('/media-priv/api/login', login('/media-priv/'));
 app.use('/media-priv/api/logout', logout('/media-priv/'));
 app.use('/media-priv/api/user', user);
 app.use('/media-priv', auth, express.static('media'));
+
+app.use((req, res) => {
+	res.status(404);
+	res.sendFile(path.join(process.cwd(), UI_PATH, 'index.html'));
+});
 
 const port = parseInt(process.argv[2], 10) || 0;
 const server = https.createServer({
