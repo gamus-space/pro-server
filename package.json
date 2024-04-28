@@ -5,11 +5,12 @@
   "scripts": {
     "start": "node src/serve.js",
     "keygen": "cd cert && tls-keygen",
-    "scan": "npm-run-all scan-music scan-games scan-screenshots scan-text",
+    "scan": "npm-run-all scan-music scan-screenshots scan-games scan-text scan-thumbs",
     "scan-music": "node src/scan-music.js media/music",
     "scan-screenshots": "node src/scan-screenshots.js media/screenshots",
     "scan-games": "node src/scan-games.js media",
-    "scan-text": "node src/scan-text.js media/text"
+    "scan-text": "node src/scan-text.js media/text",
+    "scan-thumbs": "node src/scan-thumbs.js media"
   },
   "author": "krzykos",
   "license": "ISC",

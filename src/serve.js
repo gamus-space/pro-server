@@ -86,7 +86,7 @@ function userAuthorized(req) {
 const auth = (req, res, next) => {
 	const user = userAuthorized(req);
 
-	const file = `${req.baseUrl}${req.path}`;
+	const file = req.path;
 	let fileAuthorized;
 	if (file.endsWith('.json')) {
 		fileAuthorized = true;
@@ -96,7 +96,7 @@ const auth = (req, res, next) => {
 		if (!user?.mp3)
 			req.headers['range'] = 'bytes=0-307199';
 		fileAuthorized = true;
-	} else if (file.match(/\/demo(-\d+)?\.webp$/)) {
+	} else if (file.match(/\/demo(-\d+)?\.webp$/) || file.startsWith('/thumbs')) {
 		fileAuthorized = true;
 	} else if (file.endsWith('.webp')) {
 		fileAuthorized = !!user;
