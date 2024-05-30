@@ -39,6 +39,7 @@ const cookieOptions = path => ({
 	sameSite: 'none',
 	secure: 'true',
 	path,
+	partitioned: 'true',
 });
 
 const login = path => (req, res) => {

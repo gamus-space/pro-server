@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { tree } = require('./lib');
+const { groupBy, tree } = require('./lib');
 
 if (process.argv.length <= 2) {
   console.error('usage: scan-text.js directory');
@@ -38,17 +38,19 @@ function validateOrder(label, data, order) {
     console.error(`[${label}] excessive: ${data.join(', ')}`);
 }
 
-const index = { PC:
-  Object.fromEntries(tree(dir).filter(file => file.endsWith('/index.md')).map(file => {
+const index = Object.fromEntries(Object.entries(groupBy(
+  tree(dir).filter(file => file.endsWith('/index.md')).map(file => {
     const contents = fs.readFileSync(path.join(dir, file), 'utf-8');
     const game = contents.match(/^\# ([^\r\n]+)\r?\n/)[1];
     const sections = [...contents.matchAll(/\n\#\# ([^\r\n]+)\r?\n/g)].map(m => m[1]);
     validateOrder(`SECTIONS @ ${game}`, sections, SECTION_ORDER);
-    const headers = [...contents.matchAll(/\n\| \*([\w ]+)\* \|/g)].map(m => m[1]);
-    validateOrder(`HEADERS @ ${game}`, headers, HEADER_ORDER);
-    return [ game, file ];
-  })),
-};
+    const headers = [...contents.matchAll(/\n\| \*([\w ]+)\* \| ([^\|]+) \|/g)].map(m => m.slice(1, 3));
+    validateOrder(`HEADERS @ ${game}`, headers.map(([key]) => key), HEADER_ORDER);
+    const platform = headers.find(([key]) => key === 'Platform')?.[1];
+    return { platform, game, file };
+  }),
+  (({ platform }) => platform),
+)).map(([ platform, games ]) => [platform, Object.fromEntries(games.map(({ game, file }) => [game, file]))]));
 
 const out = path.join(dir, 'index.json');
 fs.writeFileSync(out, JSON.stringify(index, null, 2));

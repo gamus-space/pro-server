@@ -17,10 +17,12 @@ const music = tree(musicDir)
     return { no: parseInt(headers.metadata.Ordinal), title: headers.metadata.TITLE };
   })
   .sort((a, b) => a.no - b.no);
-const gallery = tree(galleryDir);
+const gallery = tree(galleryDir)
+  .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 console.log({ gallery, music });
 
 const stub = [{
+    platform: '',
     game: '',
     screenshots: [],
     demoScreenshots: [],

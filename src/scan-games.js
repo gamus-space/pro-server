@@ -8,7 +8,7 @@ if (process.argv.length <= 2) {
 const dir = process.argv[2];
 
 const screenshots = JSON.parse(fs.readFileSync(path.join(dir, 'screenshots', 'index.json')));
-const library = JSON.parse(fs.readFileSync(path.join(dir, 'music', 'index.json')));
+const library = JSON.parse(fs.readFileSync(path.join(dir, 'music', 'all.json')));
 const games = new Map();
 library.forEach(entry => {
   const key = `${entry.platform}\t${entry.game}`;
@@ -25,7 +25,7 @@ const index = [...games.keys()].map(key => {
       artists.set(artist, true);
     });
   });
-  const screenshotsUrl = screenshots.find(entry => entry.game === game)?.index;
+  const screenshotsUrl = screenshots[platform]?.[game];
   const thumbnailsUrl = screenshotsUrl && path.join('thumbs', screenshotsUrl, '..').replaceAll('\\', '/');
   return { platform, game, year, artists: [...artists.keys()], thumbnailsUrl };
 });

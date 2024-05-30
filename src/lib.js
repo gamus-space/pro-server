@@ -20,6 +20,15 @@ exports.tree = function tree(root) {
   return result;
 }
 
+exports.groupBy = function groupBy(data, f) {
+  const o = {};
+  data.forEach(d => {
+    const key = f(d);
+    o[key] = [...o[key] ?? [], d];
+  });
+  return o;
+}
+
 const utf8Decoder = new StringDecoder('utf8');
 
 function getString(data, pos, n) {
@@ -78,4 +87,13 @@ exports.flacHeaders = function flacHeaders(content) {
 exports.flacGainValue = function flacGainValue(gainStr) {
   const str = /^([+-]?\d+(\.\d+)?)( db)?/i.exec(gainStr)?.[1];
   return str && Number(str);
+}
+
+exports.time = function time(t) {
+  t = Math.floor(t)
+  const sec = t % 60;
+  const minHr = Math.floor(t/60);
+  const min = minHr % 60;
+  const hr = Math.floor(minHr / 60);
+  return `${hr === 0 ? '' : hr + ':'}${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
 }

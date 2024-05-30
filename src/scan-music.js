@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const process = require('process');
-const { flacGainValue, flacHeaders, tree } = require('./lib');
+const { flacGainValue, flacHeaders, groupBy, time, tree } = require('./lib');
 
 if (process.argv.length <= 2) {
   console.error('usage: scan.js directory');
@@ -53,13 +53,14 @@ const originalDb = tree(dir)
     const altFile = file.replace(/\.flac$/, '.mp3');
     const altSize = fs.existsSync(path.resolve(dir, altFile)) ? fs.statSync(path.resolve(dir, altFile)).size : undefined;
     return {
+      dir: path.dirname(file),
       files: [
         {
-          url: file,
+          url: path.basename(file),
           size,
         },
         ...altSize ? [{
-          url: altFile,
+          url: path.basename(altFile),
           size: altSize,
         }] : [],
       ],
@@ -80,7 +81,7 @@ const originalDb = tree(dir)
   });
 
 const derivativeDb = tree(dir)
-  .filter(file => file.endsWith('.json') && file !== 'index.json')
+  .filter(file => path.basename(file) === 'derivative.json')
   .flatMap(file => {
     const { derivative } = JSON.parse(fs.readFileSync(path.resolve(dir, file), 'utf-8'));
     if (!derivative) return;
@@ -89,14 +90,42 @@ const derivativeDb = tree(dir)
       const overrides = { ...derivative.overrides, ...track.overrides };
       return originalDb
         .filter(track => Object.entries(criteria).every(([key, value]) => track[key] === value))
-        .flatMap(track => ({ ...track, ...overrides }));
+        .flatMap(track => ({
+          ...track,
+          ...overrides,
+          dir: path.dirname(file),
+          files: track.files.map(trackFile => ({
+            ...trackFile,
+            url: path.join(path.relative(path.dirname(file), track.dir), trackFile.url).replaceAll('\\', '/'),
+          })),
+        }));
     });
   });
 
-const index = [...originalDb, ...derivativeDb]
-  .sort((a, b) => `${a.game}\t${a.ordinal}`.localeCompare(`${b.game}\t${b.ordinal}`, undefined, { numeric: true }));
+const allDb = [...originalDb, ...derivativeDb];
+const hierarchicalDb = groupBy(allDb, ({ dir }) => dir);
+for (let gameDir in hierarchicalDb) {
+  const gameIndex = hierarchicalDb[gameDir].sort((a, b) => `${a.ordinal}`.localeCompare(`${b.ordinal}`, undefined, { numeric: true }));
+  fs.writeFileSync(path.join(dir, gameDir, 'index.json'), JSON.stringify(gameIndex, null, 2));
+}
 
-const out = path.join(dir, 'index.json');
+const gameIndex = Object.fromEntries(Object.entries(groupBy(
+  (Object.keys(hierarchicalDb).map(gameDir => {
+    const { game, platform } = hierarchicalDb[gameDir][0];
+    return { platform, game, file: `${gameDir}/index.json` };
+  }).sort((a, b) => `${a.game}`.localeCompare(`${b.game}`, undefined, { numeric: true }))),
+  ({ platform }) => platform
+)).map(([platform, entries]) => [platform, Object.fromEntries(entries.map(({ game, file }) => [game, file]))]));
+const gameIndexOut = path.join(dir, 'index.json');
+fs.writeFileSync(gameIndexOut, JSON.stringify(gameIndex, null, 2));
+console.log(`game index written to: ${gameIndexOut}`);
+
+const index = allDb.sort((a, b) => `${a.game}\t${a.ordinal}`.localeCompare(`${b.game}\t${b.ordinal}`, undefined, { numeric: true }));
+const out = path.join(dir, 'all.json');
 fs.writeFileSync(out, JSON.stringify(index, null, 2));
 console.log(`music index written to: ${out}`);
+
+console.log(`games: ${Object.keys(gameIndex.PC).length}`);
 console.log(`tracks: ${index.length}`);
+console.log(`length: ${time(index.reduce((res, { time }) => res+time, 0))}`);
+console.log(`missing mp3: ${index.filter(({ files }) => files.length < 2).length}`);
