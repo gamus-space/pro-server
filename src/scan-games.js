@@ -8,6 +8,7 @@ if (process.argv.length <= 2) {
 const dir = process.argv[2];
 
 const screenshots = JSON.parse(fs.readFileSync(path.join(dir, 'screenshots', 'index.json')));
+const text = JSON.parse(fs.readFileSync(path.join(dir, 'text', 'index.json')));
 const library = JSON.parse(fs.readFileSync(path.join(dir, 'music', 'all.json')));
 const games = new Map();
 library.forEach(entry => {
@@ -27,7 +28,10 @@ const index = [...games.keys()].map(key => {
   });
   const screenshotsUrl = screenshots[platform]?.[game];
   const thumbnailsUrl = screenshotsUrl && path.join('thumbs', screenshotsUrl, '..').replaceAll('\\', '/');
-  return { platform, game, year, artists: [...artists.keys()], thumbnailsUrl };
+  const textUrl = text[platform]?.[game];
+  const textContents = textUrl && fs.readFileSync(path.join(dir, 'text', textUrl), 'utf-8');
+  const dateAdded = /\r?\n\| \*Date added\* \| ([\d-]+) \|\r?\n/.exec(textContents)?.[1];
+  return { platform, game, year, artists: [...artists.keys()], thumbnailsUrl, dateAdded };
 });
 
 const out = path.join(dir, 'index.json');

@@ -1,6 +1,7 @@
 'use strict';
 
 const fs = require('fs');
+const path = require('path');
 const { StringDecoder } = require('string_decoder');
 
 exports.tree = function tree(root) {
@@ -8,9 +9,9 @@ exports.tree = function tree(root) {
   let result = [];
   while (queue.length > 0) {
     const dir = queue.shift();
-    fs.readdirSync(`${root}/${dir}`).forEach(entry => {
+    fs.readdirSync(path.join(root, dir)).forEach(entry => {
     const entryPath = `${dir === '' ? '' : dir + '/'}${entry}`;
-    const stat = fs.statSync(`${root}/${entryPath}`);
+    const stat = fs.statSync(path.join(root, entryPath));
     if (stat.isDirectory())
       queue.push(entryPath);
     else

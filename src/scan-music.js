@@ -40,7 +40,7 @@ function calculateOriginalSize(headers) {
 const originalDb = tree(dir)
   .filter(file => file.endsWith('.flac'))
   .map(file => {
-    const content = readFilePrefixSync(path.resolve(dir, file), 2048);
+    const content = readFilePrefixSync(path.resolve(dir, file), 2176);
     const headers = flacHeaders(content);
     const time = Math.round(headers.sampleCount / headers.sampleRate * 100) / 100;
     const durationMatch = headers.metadata?.['Duration']?.match(/^(\d+):(\d\d)$/);
@@ -52,6 +52,8 @@ const originalDb = tree(dir)
     const size = fs.statSync(path.resolve(dir, file)).size;
     const altFile = file.replace(/\.flac$/, '.mp3');
     const altSize = fs.existsSync(path.resolve(dir, altFile)) ? fs.statSync(path.resolve(dir, altFile)).size : undefined;
+    if (!replayGain.album) console.warn(`replayGain missing: ${file}`);
+    if (!altSize) console.warn(`mp3 missing: ${file}`);
     return {
       dir: path.dirname(file),
       files: [
@@ -109,6 +111,7 @@ for (let gameDir in hierarchicalDb) {
   fs.writeFileSync(path.join(dir, gameDir, 'index.json'), JSON.stringify(gameIndex, null, 2));
 }
 
+console.log(' * stats');
 const gameIndex = Object.fromEntries(Object.entries(groupBy(
   (Object.keys(hierarchicalDb).map(gameDir => {
     const { game, platform } = hierarchicalDb[gameDir][0];
@@ -128,4 +131,3 @@ console.log(`music index written to: ${out}`);
 console.log(`games: ${Object.keys(gameIndex.PC).length}`);
 console.log(`tracks: ${index.length}`);
 console.log(`length: ${time(index.reduce((res, { time }) => res+time, 0))}`);
-console.log(`missing mp3: ${index.filter(({ files }) => files.length < 2).length}`);

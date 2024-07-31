@@ -15,6 +15,7 @@ HEADER_ORDER = {
   Publisher: true,
   'Ported from': false,
   System: false,
+  'Date added': true,
 };
 
 SECTION_ORDER = {
