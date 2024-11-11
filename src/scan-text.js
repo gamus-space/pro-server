@@ -56,4 +56,16 @@ const index = Object.fromEntries(Object.entries(groupBy(
 const out = path.join(dir, 'index.json');
 fs.writeFileSync(out, JSON.stringify(index, null, 2));
 console.log(`text index written to: ${out}`);
-console.log(`games: ${Object.keys(index.PC).length}`);
+
+const stats = Object.entries(index).flatMap(([platform, games]) => Object.entries(games).flatMap(([game, index]) => ({ platform, game, index }))).map(({ index }) => {
+  const size = fs.statSync(path.join(dir, index)).size;
+  return { articles: 1, bytes: size };
+}).reduce((sum, game) => ({
+  articles: sum.articles + game.articles,
+  bytes: sum.bytes + game.bytes,
+}));
+const statsPath = path.join(dir, 'stats.json');
+fs.writeFileSync(statsPath, JSON.stringify(stats, null, 2));
+console.log(`stats written to: ${statsPath}`);
+
+console.log(`games: ${Object.entries(index).reduce((sum, [, games]) => sum + Object.entries(games).length, 0)}`);

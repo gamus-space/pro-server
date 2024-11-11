@@ -37,4 +37,15 @@ const index = [...games.keys()].map(key => {
 const out = path.join(dir, 'index.json');
 fs.writeFileSync(out, JSON.stringify(index, null, 2));
 console.log(`games index written to: ${out}`);
+
+const stats = {
+  music: JSON.parse(fs.readFileSync(path.join(dir, 'music', 'stats.json'))),
+  screenshots: JSON.parse(fs.readFileSync(path.join(dir, 'screenshots', 'stats.json'))),
+  text: JSON.parse(fs.readFileSync(path.join(dir, 'text', 'stats.json'))),
+  games: { games: index.length },
+};
+const statsPath = path.join(dir, 'stats.json');
+fs.writeFileSync(statsPath, JSON.stringify(stats, null, 2));
+console.log(`stats written to: ${statsPath}`);
+
 console.log(`games: ${index.length}`);

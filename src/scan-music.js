@@ -111,7 +111,6 @@ for (let gameDir in hierarchicalDb) {
   fs.writeFileSync(path.join(dir, gameDir, 'index.json'), JSON.stringify(gameIndex, null, 2));
 }
 
-console.log(' * stats');
 const gameIndex = Object.fromEntries(Object.entries(groupBy(
   (Object.keys(hierarchicalDb).map(gameDir => {
     const { game, platform } = hierarchicalDb[gameDir][0];
@@ -128,6 +127,16 @@ const out = path.join(dir, 'all.json');
 fs.writeFileSync(out, JSON.stringify(index, null, 2));
 console.log(`music index written to: ${out}`);
 
-console.log(`games: ${Object.keys(gameIndex.PC).length}`);
+const stats = {
+  tracks: allDb.length,
+  seconds: Math.floor(allDb.reduce((sum, { time }) => sum + time, 0)),
+  bytes: allDb.reduce((sum, { files }) => sum + files.reduce((bytes, file) => bytes + file.size, 0), 0),
+};
+const statsPath = path.join(dir, 'stats.json');
+fs.writeFileSync(statsPath, JSON.stringify(stats, null, 2));
+console.log(`stats written to: ${statsPath}`);
+
+console.log('\n * stats');
+console.log(`games: ${Object.entries(gameIndex).reduce((sum, [, games]) => sum + Object.entries(games).length, 0)}`);
 console.log(`tracks: ${index.length}`);
 console.log(`length: ${time(index.reduce((res, { time }) => res+time, 0))}`);
