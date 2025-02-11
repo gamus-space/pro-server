@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const process = require('process');
-const { flacGainValue, flacHeaders, groupBy, time, tree } = require('./lib');
+const { flacGainValue, flacHeaders, gameCompare, groupBy, time, tree } = require('./lib');
 
 if (process.argv.length <= 2) {
   console.error('usage: scan.js directory');
@@ -78,6 +78,7 @@ const originalDb = tree(dir)
       year: headers.metadata?.['DATE'],
       kind: headers.metadata?.['Kind'],
       ordinal: headers.metadata?.['Ordinal'],
+      subtitle: headers.metadata?.['Subtitle'],
       originalSize: calculateOriginalSize(headers),
     };
   });
@@ -115,7 +116,7 @@ const gameIndex = Object.fromEntries(Object.entries(groupBy(
   (Object.keys(hierarchicalDb).map(gameDir => {
     const { game, platform } = hierarchicalDb[gameDir][0];
     return { platform, game, file: `${gameDir}/index.json` };
-  }).sort((a, b) => `${a.game}`.localeCompare(`${b.game}`, undefined, { numeric: true }))),
+  }).sort((a, b) => gameCompare(a.game, b.game))),
   ({ platform }) => platform
 )).map(([platform, entries]) => [platform, Object.fromEntries(entries.map(({ game, file }) => [game, file]))]));
 const gameIndexOut = path.join(dir, 'index.json');

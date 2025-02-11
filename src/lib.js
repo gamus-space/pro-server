@@ -98,3 +98,6 @@ exports.time = function time(t) {
   const hr = Math.floor(minHr / 60);
   return `${hr === 0 ? '' : hr + ':'}${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
 }
+
+const gameSort = game => game.replaceAll(/:/g, '\t');
+exports.gameCompare = (a, b) => `${gameSort(a)}`.localeCompare(`${gameSort(b)}`, undefined, { numeric: true });

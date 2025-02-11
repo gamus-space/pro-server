@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { gameCompare } = require('./lib');
 
 if (process.argv.length <= 2) {
   console.error('usage: scan-games.js directory');
@@ -17,7 +18,7 @@ library.forEach(entry => {
     games.set(key, []);
   games.get(key).unshift(entry);
 });
-const index = [...games.keys()].map(key => {
+const index = [...games.keys()].sort((a, b) => gameCompare(a, b)).map(key => {
   const [platform, game] = key.split('\t');
   const year = games.get(key)[0].year;
   const artists = new Map();
