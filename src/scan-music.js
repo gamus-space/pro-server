@@ -40,7 +40,7 @@ function calculateOriginalSize(headers) {
 const originalDb = tree(dir)
   .filter(file => file.endsWith('.flac'))
   .map(file => {
-    const content = readFilePrefixSync(path.resolve(dir, file), 2176);
+    const content = readFilePrefixSync(path.resolve(dir, file), 4352);
     const headers = flacHeaders(content);
     const time = Math.round(headers.sampleCount / headers.sampleRate * 100) / 100;
     const durationMatch = headers.metadata?.['Duration']?.match(/^(\d+):(\d\d)$/);

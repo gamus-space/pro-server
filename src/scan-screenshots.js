@@ -8,9 +8,12 @@ if (process.argv.length <= 2) {
 }
 const dir = process.argv[2];
 
+const musicDb = JSON.parse(fs.readFileSync(path.join(dir, '..', 'music', 'all.json')));
+
 const index = Object.fromEntries(Object.entries(groupBy(
   tree(dir).filter(path => path.endsWith('/index.json')).flatMap(file => {
     const data = JSON.parse(fs.readFileSync(path.join(dir, file)));
+    if (!Array.isArray(data)) return [];
     data.forEach(entry => {
       const libraryFiles = new Set(entry.library.map(({ url }) => url));
       const fsFiles = new Set(tree(path.dirname(path.join(dir, file))).filter(path => !path.endsWith('.json')));
@@ -20,6 +23,14 @@ const index = Object.fromEntries(Object.entries(groupBy(
       [...fsFiles].filter(file => !libraryFiles.has(file)).forEach(f => {
         console.error(` * (${file}) file not found in index: ${f}`);
       });
+
+      const galleryTracks = entry.tracks?.map(({ title }) => title);
+      const musicTracks = musicDb.filter(({ platform, game }) => platform === entry.platform && game === entry.game).toSorted((t, u) => parseInt(t.ordinal) - parseInt(u.ordinal)).map(({ title }) => title);
+      if (!galleryTracks) {
+        console.warn(`${file}: gallery has no tracks`);
+      } else if (JSON.stringify(galleryTracks) !== JSON.stringify(musicTracks)) {
+        console.warn(`${file}: inconsistent track list`);
+      }
     });
     return data.map(({ platform, game }) => ({ platform, game, file }));
   }),

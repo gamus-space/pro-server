@@ -13,6 +13,7 @@ HEADER_ORDER = {
   Year: true,
   Developer: true,
   Publisher: true,
+  Type: true,
   'Ported from': false,
   System: false,
   'Date added': true,

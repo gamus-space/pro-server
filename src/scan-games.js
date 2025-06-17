@@ -32,7 +32,8 @@ const index = [...games.keys()].sort((a, b) => gameCompare(a, b)).map(key => {
   const textUrl = text[platform]?.[game];
   const textContents = textUrl && fs.readFileSync(path.join(dir, 'text', textUrl), 'utf-8');
   const dateAdded = /\r?\n\| \*Date added\* \| ([\d-]+) \|\r?\n/.exec(textContents)?.[1];
-  return { platform, game, year, artists: [...artists.keys()], thumbnailsUrl, dateAdded };
+  const type = /\r?\n\| \*Type\* \| ([^|]+) \|\r?\n/.exec(textContents)?.[1];
+  return { platform, game, year, type, artists: [...artists.keys()], thumbnailsUrl, dateAdded };
 });
 
 const out = path.join(dir, 'index.json');
