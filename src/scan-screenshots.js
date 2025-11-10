@@ -9,6 +9,7 @@ if (process.argv.length <= 2) {
 const dir = process.argv[2];
 
 const musicDb = JSON.parse(fs.readFileSync(path.join(dir, '..', 'music', 'all.json')));
+const musicIndex = JSON.parse(fs.readFileSync(path.join(dir, '..', 'music', 'index.json')));
 
 const index = Object.fromEntries(Object.entries(groupBy(
   tree(dir).filter(path => path.endsWith('/index.json')).flatMap(file => {
@@ -24,12 +25,24 @@ const index = Object.fromEntries(Object.entries(groupBy(
         console.error(` * (${file}) file not found in index: ${f}`);
       });
 
-      const galleryTracks = entry.tracks?.map(({ title }) => title);
-      const musicTracks = musicDb.filter(({ platform, game }) => platform === entry.platform && game === entry.game).toSorted((t, u) => parseInt(t.ordinal) - parseInt(u.ordinal)).map(({ title }) => title);
-      if (!galleryTracks) {
+      const TYPES = ['soundtrack', 'stage'];
+      entry.tracks?.filter(({ type }) => !TYPES.includes(type)).forEach(({ title }) => {
+        console.warn(`${file}: track has missing/invalid type: ${title}`);
+      })
+      if (!entry.tracks) {
         console.warn(`${file}: gallery has no tracks`);
-      } else if (JSON.stringify(galleryTracks) !== JSON.stringify(musicTracks)) {
-        console.warn(`${file}: inconsistent track list`);
+      } else {
+        const galleryMusicTracks = entry.tracks?.filter(({ type }) => type === 'soundtrack').map(({ title }) => title);
+        const musicTracks = musicDb.filter(({ platform, game }) => platform === entry.platform && game === entry.game).toSorted((t, u) => parseInt(t.ordinal) - parseInt(u.ordinal)).map(({ title }) => title);
+        if (JSON.stringify(galleryMusicTracks) !== JSON.stringify(musicTracks)) {
+          console.warn(`${file}: inconsistent track list type: soundtrack`);
+        }
+        const galleryStageTracks = entry.tracks?.filter(({ type }) => type === 'stage').map(({ title }) => title);
+        const musicStageTracks = !musicIndex[entry.platform][entry.game].stages ? [] :
+          JSON.parse(fs.readFileSync(path.join(dir, '..', 'music', musicIndex[entry.platform][entry.game].stages))).derivative.tracks.map(({ original, overrides }) => overrides.title ?? original.title);
+        if (JSON.stringify(galleryStageTracks) !== JSON.stringify(musicStageTracks)) {
+          console.warn(`${file}: inconsistent track list type: stage`);
+        }
       }
     });
     return data.map(({ platform, game }) => ({ platform, game, file }));

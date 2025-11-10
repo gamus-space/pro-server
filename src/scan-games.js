@@ -45,6 +45,7 @@ const stats = {
   screenshots: JSON.parse(fs.readFileSync(path.join(dir, 'screenshots', 'stats.json'))),
   text: JSON.parse(fs.readFileSync(path.join(dir, 'text', 'stats.json'))),
   games: { games: index.length },
+  pad: 'x'.repeat(index.length % 33),
 };
 const statsPath = path.join(dir, 'stats.json');
 fs.writeFileSync(statsPath, JSON.stringify(stats, null, 2));

@@ -66,6 +66,7 @@ const originalDb = tree(dir)
           size: altSize,
         }] : [],
       ],
+      type: 'soundtrack',
       game: headers.metadata?.['ALBUM'],
       title: headers.metadata?.['TITLE'],
       artist: headers.metadata?.['ARTIST'],
@@ -112,13 +113,33 @@ for (let gameDir in hierarchicalDb) {
   fs.writeFileSync(path.join(dir, gameDir, 'index.json'), JSON.stringify(gameIndex, null, 2));
 }
 
+Object.entries(hierarchicalDb).forEach(([game, tracks]) => {
+  Object.entries(groupBy(tracks, ({ title }) => title)).forEach(([title, tracks]) => {
+    if (tracks.length > 1) {
+      console.warn(`${tracks[0].platform}/${tracks[0].game}: duplicate track type=soundtrack title: ${title}`);
+    }
+  });
+});
+tree(dir)
+  .filter(file => path.basename(file) === 'stages.json')
+  .forEach(file => {
+    const stages = JSON.parse(fs.readFileSync(path.join(dir, file))).derivative.tracks;
+    Object.entries(groupBy(stages, ({ original, overrides }) => overrides.title ?? original.title)).forEach(([title, tracks]) => {
+      if (tracks.length > 1) {
+        console.warn(`${file}: duplicate track type=stage title: ${title}`);
+      }
+    });
+  });
+
 const gameIndex = Object.fromEntries(Object.entries(groupBy(
   (Object.keys(hierarchicalDb).map(gameDir => {
     const { game, platform } = hierarchicalDb[gameDir][0];
-    return { platform, game, file: `${gameDir}/index.json` };
+    const hasStages = fs.existsSync(path.join(dir, gameDir, 'stages.json'));
+    const stagesUrl = `${gameDir}/stages.json`;
+    return { platform, game, index: `${gameDir}/index.json`, stages: hasStages ? stagesUrl : undefined };
   }).sort((a, b) => gameCompare(a.game, b.game))),
   ({ platform }) => platform
-)).map(([platform, entries]) => [platform, Object.fromEntries(entries.map(({ game, file }) => [game, file]))]));
+)).map(([platform, entries]) => [platform, Object.fromEntries(entries.map(({ game, index, stages }) => [game, { index, stages }]))]));
 const gameIndexOut = path.join(dir, 'index.json');
 fs.writeFileSync(gameIndexOut, JSON.stringify(gameIndex, null, 2));
 console.log(`game index written to: ${gameIndexOut}`);
@@ -139,5 +160,6 @@ console.log(`stats written to: ${statsPath}`);
 
 console.log('\n * stats');
 console.log(`games: ${Object.entries(gameIndex).reduce((sum, [, games]) => sum + Object.entries(games).length, 0)}`);
+console.log(`  with stages: ${Object.entries(gameIndex).reduce((sum, [, games]) => sum + Object.values(games).filter(({ stages }) => !!stages).length, 0)}`);
 console.log(`tracks: ${index.length}`);
 console.log(`length: ${time(index.reduce((res, { time }) => res+time, 0))}`);
