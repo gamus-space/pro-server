@@ -30,6 +30,10 @@ exports.groupBy = function groupBy(data, f) {
   return o;
 }
 
+exports.matches = function matches(o, criteria) {
+  return Object.keys(criteria).every(key => o[key] === criteria[key]);
+}
+
 const utf8Decoder = new StringDecoder('utf8');
 
 function getString(data, pos, n) {
