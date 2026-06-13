@@ -25,7 +25,7 @@ const index = Object.fromEntries(Object.entries(groupBy(
         console.error(` * (${file}) file not found in index: ${f}`);
       });
 
-      const TYPES = ['soundtrack', 'stage'];
+      const TYPES = ['soundtrack', 'stage', 'group'];
       entry.tracks?.filter(({ type }) => !TYPES.includes(type)).forEach(({ title }) => {
         console.warn(`${file}: track has missing/invalid type: ${title}`);
       })
