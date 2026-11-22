@@ -88,21 +88,24 @@ const derivativeDb = tree(dir)
   .flatMap(file => {
     const { derivative } = JSON.parse(fs.readFileSync(path.resolve(dir, file), 'utf-8'));
     if (!derivative) return;
-    return derivative.tracks.flatMap(track => {
-      const criteria = { ...derivative.original, ...track.original };
-      const overrides = { ...derivative.overrides, ...track.overrides };
-      return originalDb
-        .filter(track => Object.entries(criteria).every(([key, value]) => track[key] === value))
-        .flatMap(track => ({
-          ...track,
-          ...overrides,
-          dir: path.dirname(file),
-          files: track.files.map(trackFile => ({
-            ...trackFile,
-            url: path.join(path.relative(path.dirname(file), track.dir), trackFile.url).replaceAll('\\', '/'),
-          })),
-        }));
-    });
+    const derivatives = Array.isArray(derivative) ? derivative : [derivative];
+    return derivatives.flatMap(derivative =>
+      derivative.tracks.flatMap(track => {
+        const criteria = { ...derivative.original, ...track.original };
+        const overrides = { ...derivative.overrides, ...track.overrides };
+        return originalDb
+          .filter(track => Object.entries(criteria).every(([key, value]) => track[key] === value))
+          .flatMap(track => ({
+            ...track,
+            ...overrides,
+            dir: path.dirname(file),
+            files: track.files.map(trackFile => ({
+              ...trackFile,
+              url: path.join(path.relative(path.dirname(file), track.dir), trackFile.url).replaceAll('\\', '/'),
+            })),
+          }));
+      })
+    );
   });
 
 const allDb = [...originalDb, ...derivativeDb];
@@ -148,17 +151,21 @@ const out = path.join(dir, 'all.json');
 fs.writeFileSync(out, JSON.stringify(index, null, 2));
 console.log(`music index written to: ${out}`);
 
+const statDb = allDb.filter(({ game }) => !game.includes('(combined)'));
 const stats = {
-  tracks: allDb.length,
-  seconds: Math.floor(allDb.reduce((sum, { time }) => sum + time, 0)),
-  bytes: allDb.reduce((sum, { files }) => sum + files.reduce((bytes, file) => bytes + file.size, 0), 0),
+  tracks: statDb.length,
+  seconds: Math.floor(statDb.reduce((sum, { time }) => sum + time, 0)),
+  bytes: statDb.reduce((sum, { files }) => sum + files.reduce((bytes, file) => bytes + file.size, 0), 0),
 };
 const statsPath = path.join(dir, 'stats.json');
 fs.writeFileSync(statsPath, JSON.stringify(stats, null, 2));
 console.log(`stats written to: ${statsPath}`);
 
+const distinctIndex = index.filter(({ game }) => !game.includes('(combined)'));
 console.log('\n * stats');
 console.log(`games: ${Object.entries(gameIndex).reduce((sum, [, games]) => sum + Object.entries(games).length, 0)}`);
 console.log(`  with stages: ${Object.entries(gameIndex).reduce((sum, [, games]) => sum + Object.values(games).filter(({ stages }) => !!stages).length, 0)}`);
-console.log(`tracks: ${index.length}`);
-console.log(`length: ${time(index.reduce((res, { time }) => res+time, 0))}`);
+console.log(`tracks: ${distinctIndex.length}`);
+console.log(`  total: ${index.length}`);
+console.log(`length: ${time(distinctIndex.reduce((res, { time }) => res+time, 0))}`);
+console.log(`  total: ${time(index.reduce((res, { time }) => res+time, 0))}`);

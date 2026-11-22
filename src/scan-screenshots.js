@@ -8,6 +8,75 @@ if (process.argv.length <= 2) {
 }
 const dir = process.argv[2];
 
+const gameIndex = JSON.parse(fs.readFileSync(path.join(dir, 'index.json')));
+tree(dir).filter(path => path.endsWith('/derivative.json')).flatMap(file => {
+  const derivative = JSON.parse(fs.readFileSync(path.join(dir, file)));
+  const processors = {
+    library: (library, derivative) => {
+      const derivatives = Array.isArray(derivative) ? derivative : [derivative];
+      return [...library, ...derivatives.flatMap(({ original, select }) => {
+        if (!select.library) return [];
+        const base = gameIndex[original.platform]?.[original.game];
+        if (!base) {
+          console.error(`derivative ${file} base not found: ${JSON.stringify(original)}`);
+          return [];
+        }
+        const baseScreenshots = JSON.parse(fs.readFileSync(path.join(dir, base)));
+        return baseScreenshots[0].library.map(({ url, title, group, groupTitle, ...others }) => ({
+          url: `${select.library.urlPrefix ?? ''}${url}`,
+          title: `${select.library.titlePrefix ?? ''}${title}`,
+          group: group && `${select.library.urlPrefix ?? ''}${group}`,
+          groupTitle: groupTitle && `${select.library.titlePrefix ?? ''}${groupTitle}`,
+          ...others,
+        }));
+      })];
+    },
+    tracks: (tracks, derivative) => {
+      const derivatives = Array.isArray(derivative) ? derivative : [derivative];
+      const flatTracks = [...tracks, ...derivatives.flatMap(({ original, select }) => {
+        if (!select.tracks) return [];
+        const base = gameIndex[original.platform]?.[original.game];
+        if (!base) {
+          console.error(`derivative ${file} base not found: ${JSON.stringify(original)}`);
+          return [];
+        }
+        const baseScreenshots = JSON.parse(fs.readFileSync(path.join(dir, base)));
+        return baseScreenshots[0].tracks.map(({ title, type, screenshots, ...others }) => ({
+          title: type === 'group' ? `${select.tracks.groupPrefix ?? ''}${title}` : select.tracks.titleMapping?.[title] ?? title,
+          type,
+          screenshots: screenshots?.map(url =>
+            typeof url === 'string' ? `${select.tracks.urlPrefix ?? ''}${url}` :
+            url.groupRef ? { ...url, groupRef: `${select.tracks.groupPrefix ?? ''}${url.groupRef}` } :
+            url
+          ),
+          ...others,
+        }));
+      })];
+      const groupedTracks = Object.values(
+        groupBy(flatTracks, ({ type, title }) => `${type}/${title}`)
+      ).map(items => ({
+        ...items[0],
+        screenshots: items.every(({ screenshots }) => !screenshots) ? undefined :
+          items.flatMap(({ screenshots }) => screenshots ?? []),
+      }));
+      return groupedTracks;
+    },
+  };
+  const result = [Object.fromEntries(Object.entries(derivative.specifics).map(([key, value]) => {
+    return [key, processors[key]?.(value, derivative.derivative) ?? value];
+  }))];
+  const resultPath = path.join(dir, file, '..', 'index.json');
+  let oldContents;
+  try {
+    oldContents = fs.readFileSync(resultPath, 'utf-8');
+  } catch {}
+  const newContents = JSON.stringify(result, null, 2);
+  if (oldContents === newContents) return;
+
+  fs.writeFileSync(resultPath, newContents);
+  console.log(`derivative written: ${resultPath}`);
+});
+
 const musicDb = JSON.parse(fs.readFileSync(path.join(dir, '..', 'music', 'all.json')));
 const musicIndex = JSON.parse(fs.readFileSync(path.join(dir, '..', 'music', 'index.json')));
 
@@ -16,9 +85,14 @@ const index = Object.fromEntries(Object.entries(groupBy(
     const data = JSON.parse(fs.readFileSync(path.join(dir, file)));
     if (!Array.isArray(data)) return [];
     data.forEach(entry => {
-      const libraryFiles = new Set(entry.library.map(({ url }) => url));
+      const isDerivative = !entry.resolution;
+      const libraryFiles = new Set([
+        ...entry.screenshots, ...entry.demoScreenshots,
+        ...entry.library.map(({ url }) => url)]
+      );
       const fsFiles = new Set(tree(path.dirname(path.join(dir, file))).filter(path => !path.endsWith('.json')));
       [...libraryFiles].filter(file => !fsFiles.has(file)).forEach(f => {
+        if (isDerivative && f.startsWith('../')) return;
         console.error(` * (${file}) file not found in fs: ${f}`);
       });
       [...fsFiles].filter(file => !libraryFiles.has(file)).forEach(f => {
@@ -31,7 +105,7 @@ const index = Object.fromEntries(Object.entries(groupBy(
       })
       if (!entry.tracks) {
         console.warn(`${file}: gallery has no tracks`);
-      } else {
+      } else if (!isDerivative) {
         const galleryMusicTracks = entry.tracks?.filter(({ type }) => type === 'soundtrack').map(({ title }) => title);
         const musicTracks = musicDb.filter(({ platform, game }) => platform === entry.platform && game === entry.game).toSorted((t, u) => parseInt(t.ordinal) - parseInt(u.ordinal)).map(({ title }) => title);
         if (JSON.stringify(galleryMusicTracks) !== JSON.stringify(musicTracks)) {
